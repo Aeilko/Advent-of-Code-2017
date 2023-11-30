@@ -1,4 +1,9 @@
+require 'open-uri'
+
 module AOC
+
+	YEAR = 2017
+
 	module Day
 		# Settings
 		attr_accessor :num, :ans_test1, :ans_test2
@@ -7,29 +12,43 @@ module AOC
 		attr_accessor :input, :test_input, :test_input1, :test_input2
 
 		def run
-			setup
+			attr_defaults
+			puts "--- Running day #{@num} ---".yellow
+
+			load_inputs
+
+			if @input.nil?
+				puts "Input is missing".red
+				return
+			end
+
 			run_part 1
 			run_part 2
 		end
 
-		def setup
-			attr_defaults
-
+		def load_inputs
 			# Load inputs
 			if @input.nil?
-				# Load input used
-				# TODO
-				@input = "input"
+				# Load actual input of this day
+				path = "inputs/input%02d" % @num
+				unless File.exist?(path)
+					return unless AOC::Net.configured? and @num != 0
+					AOC::Net.retrieve_input @num
+				end
+				@input = File.read(path)
 			end
 			if @test_input.nil? and not (@ans_test1.nil? and @ans_test2.nil?)
-				# Load test input
-				# TODO
-				@test_input = "test"
+				# TODO: Allow part 1 and 2 to have different inputs
+				# Load test input of this day
+				path = "inputs/test/test_input%02d" % @num
+				if File.exist?(path)
+					@test_input = File.read(path)
+				end
 			end
 		end
 
 		def run_part(part)
-			puts " --- Running day #{@num}, part #{part} --- ".yellow
+			puts "--- Part #{part} ---".yellow
 
 			# Check if the solve_partX method is implemented
 			unless self.respond_to?("solve_part#{part}")
@@ -57,6 +76,36 @@ module AOC
 
 		def attr_defaults
 			@num = 0 if @num.nil?
+		end
+	end
+
+	module Net
+		@base_url = "https://adventofcode.com"
+
+		def self.configured?
+			if @session.nil? and File.exist?("session")
+				@session = File.read("session")
+			end
+			return !@session.nil?
+		end
+
+		def self.retrieve_input(day)
+			return unless configured?
+
+			puts "Downloading input file..."
+
+			local_path = "inputs/input%02d" % day
+
+			url = "#{@base_url}/#{AOC::YEAR}/day/#{day}/input"
+			headers = [
+				"User-Agent" => "https://github.com/Aeilko/Advent-of-Code-#{@year}",
+				"Cookie" => "session=#{@session}",
+			]
+
+			content = URI.open(url, *headers).read
+			File.write(local_path, content, mode: "w")
+
+			content
 		end
 	end
 end
